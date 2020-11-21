@@ -161,7 +161,6 @@ all_dataset_extras = list(itertools.chain.from_iterable(
     if ds_name not in ISOLATED_DATASETS
 ))
 
-
 EXTRAS_REQUIRE = {
     'matplotlib': ['matplotlib'],
     'tensorflow': ['tensorflow>=2.1'],
