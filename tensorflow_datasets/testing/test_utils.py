@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -349,6 +349,35 @@ class DummyMnist(dataset_builder.GeneratorBasedBuilder):
           'image': np.ones((28, 28, 1), dtype=np.uint8),
           'label': i % 10,
       }
+
+
+class DummyDataset(
+    dataset_builder.GeneratorBasedBuilder,
+    skip_registration=True,
+):
+  """Minimal DatasetBuilder."""
+
+  VERSION = utils.Version('1.0.0')
+
+  def _info(self):
+    return dataset_info.DatasetInfo(
+        builder=self,
+        features=features.FeaturesDict({
+            'id': tf.int64,
+        }),
+        supervised_keys=('id', 'id'),
+        description='Minimal DatasetBuilder.',
+    )
+
+  def _split_generators(self, dl_manager):
+    del dl_manager
+    return {
+        'train': self._generate_examples(),
+    }
+
+  def _generate_examples(self):
+    for i in range(3):
+      yield i, {'id': i}
 
 
 def test_main():

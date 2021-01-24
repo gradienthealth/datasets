@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,15 +90,17 @@ def _decode_image(fobj, session, filename):
 
   buf = fobj.read()
   image = tfds.core.lazy_imports.cv2.imdecode(
-      np.fromstring(buf, dtype=np.uint8), flags=3)  # Note: Converts to RGB.
+      np.frombuffer(buf, dtype=np.uint8), flags=3)  # Note: Converts to RGB.
   if image is None:
     logging.warning(
         "Image %s could not be decoded by OpenCV, falling back to TF", filename)
     try:
       image = tf.image.decode_image(buf, channels=3)
       image = session.run(image)
-    except tf.errors.InvalidArgumentError:
-      logging.fatal("Image %s could not be decoded by Tensorflow", filename)
+    except tf.errors.InvalidArgumentError as e:
+      raise ValueError(
+          f"{e}. Image {filename} could not be decoded by Tensorflow."
+      )
 
   # The GIF images contain a single frame.
   if len(image.shape) == 4:  # rank=4 -> rank=3

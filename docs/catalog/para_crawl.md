@@ -8,23 +8,22 @@
   <meta itemprop="sameAs" content="https://paracrawl.eu/releases.html" />
   <meta itemprop="citation" content="@misc {paracrawl,&#10;    title  = &quot;ParaCrawl&quot;,&#10;    year   = &quot;2018&quot;,&#10;    url    = &quot;http://paracrawl.eu/download.html.&quot;&#10;}" />
 </div>
-# `para_crawl`
 
-Note: This dataset has been updated since the last stable release.
-The new versions and config marked with <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
-are only available in the `tfds-nightly` package.
+# `para_crawl`
 
 *   **Description**:
 
 Web-Scale Parallel Corpora for Official European Languages.
 
-*   **Homepage**: [https://paracrawl.eu/releases.html](https://paracrawl.eu/releases.html)
+*   **Homepage**:
+    [https://paracrawl.eu/releases.html](https://paracrawl.eu/releases.html)
 
-*   **Source code**: [`tfds.translate.ParaCrawl`](https://github.com/tensorflow/datasets/tree/master/tensorflow_datasets/translate/para_crawl.py)
+*   **Source code**:
+    [`tfds.translate.ParaCrawl`](https://github.com/tensorflow/datasets/tree/master/tensorflow_datasets/translate/para_crawl.py)
 
 *   **Versions**:
 
-    * **`1.2.0`** (default): No release notes.
+    *   **`1.2.0`** (default): No release notes.
 
 *   **Citation**:
 
@@ -36,10 +35,11 @@ Web-Scale Parallel Corpora for Official European Languages.
 }
 ```
 
-*   **Figure** ([tfds.show_examples](https://www.tensorflow.org/datasets/api_docs/python/tfds/visualization/show_examples)): Not supported.
+*   **Figure**
+    ([tfds.show_examples](https://www.tensorflow.org/datasets/api_docs/python/tfds/visualization/show_examples)):
+    Not supported.
 
-
-## para_crawl/enbg (default config) <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enbg (default config)
 
 *   **Config description**: Translation dataset from English to bg.
 
@@ -47,12 +47,14 @@ Web-Scale Parallel Corpora for Official European Languages.
 
 *   **Dataset size**: `362.46 MiB`
 
-*   **Auto-cached** ([documentation](https://www.tensorflow.org/datasets/performances#auto-caching)): No
+*   **Auto-cached**
+    ([documentation](https://www.tensorflow.org/datasets/performances#auto-caching)):
+    No
 
 *   **Splits**:
 
-Split  | Examples
-:----- | -------:
+Split     | Examples
+:-------- | --------:
 `'train'` | 1,039,885
 
 *   **Features**:
@@ -64,12 +66,45 @@ Translation({
 })
 ```
 
-*   **Supervised keys** (See [`as_supervised` doc](https://www.tensorflow.org/datasets/api_docs/python/tfds/load#args)): `('en', 'bg')`
+*   **Supervised keys** (See
+    [`as_supervised` doc](https://www.tensorflow.org/datasets/api_docs/python/tfds/load#args)):
+    `('en', 'bg')`
 
-*   **Examples** ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)): Missing.
+*   **Examples**
+    ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
 
+<!-- mdformat off(HTML should not be auto-formatted) -->
 
-## para_crawl/encs <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+{% framebox %}
+
+<button id="displaydataframe">Display examples...</button>
+<div id="dataframecontent" style="overflow-x:scroll"></div>
+<script src="https://www.gstatic.com/external_hosted/jquery2.min.js"></script>
+<script>
+var url = "https://storage.googleapis.com/tfds-data/visualization/dataframe/para_crawl-enbg-1.2.0.html";
+$(document).ready(() => {
+  $("#displaydataframe").click((event) => {
+    // Disable the button after clicking (dataframe loaded only once).
+    $("#displaydataframe").prop("disabled", true);
+
+    // Pre-fetch and display the content
+    $.get(url, (data) => {
+      $("#dataframecontent").html(data);
+    }).fail(() => {
+      $("#dataframecontent").html(
+        'Error loading examples. If the error persist, please open '
+        + 'a new issue.'
+      );
+    });
+  });
+});
+</script>
+
+{% endframebox %}
+
+<!-- mdformat on -->
+
+## para_crawl/encs
 
 *   **Config description**: Translation dataset from English to cs.
 
@@ -77,12 +112,14 @@ Translation({
 
 *   **Dataset size**: `666.34 MiB`
 
-*   **Auto-cached** ([documentation](https://www.tensorflow.org/datasets/performances#auto-caching)): No
+*   **Auto-cached**
+    ([documentation](https://www.tensorflow.org/datasets/performances#auto-caching)):
+    No
 
 *   **Splits**:
 
-Split  | Examples
-:----- | -------:
+Split     | Examples
+:-------- | --------:
 `'train'` | 2,981,949
 
 *   **Features**:
@@ -94,9 +131,12 @@ Translation({
 })
 ```
 
-*   **Supervised keys** (See [`as_supervised` doc](https://www.tensorflow.org/datasets/api_docs/python/tfds/load#args)): `('en', 'cs')`
+*   **Supervised keys** (See
+    [`as_supervised` doc](https://www.tensorflow.org/datasets/api_docs/python/tfds/load#args)):
+    `('en', 'cs')`
 
-*   **Examples** ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
+*   **Examples**
+    ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
 
 <!-- mdformat off(HTML should not be auto-formatted) -->
 
@@ -104,9 +144,7 @@ Translation({
 
 <button id="displaydataframe">Display examples...</button>
 <div id="dataframecontent" style="overflow-x:scroll"></div>
-
 <script src="https://www.gstatic.com/external_hosted/jquery2.min.js"></script>
-
 <script>
 var url = "https://storage.googleapis.com/tfds-data/visualization/dataframe/para_crawl-encs-1.2.0.html";
 $(document).ready(() => {
@@ -131,7 +169,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enda <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enda
 
 *   **Config description**: Translation dataset from English to da.
 
@@ -196,7 +234,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/ende <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/ende
 
 *   **Config description**: Translation dataset from English to de.
 
@@ -261,7 +299,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enel <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enel
 
 *   **Config description**: Translation dataset from English to el.
 
@@ -326,7 +364,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enes <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enes
 
 *   **Config description**: Translation dataset from English to es.
 
@@ -391,7 +429,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enet <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enet
 
 *   **Config description**: Translation dataset from English to et.
 
@@ -456,7 +494,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enfi <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enfi
 
 *   **Config description**: Translation dataset from English to fi.
 
@@ -521,7 +559,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enfr <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enfr
 
 *   **Config description**: Translation dataset from English to fr.
 
@@ -586,7 +624,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enga <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enga
 
 *   **Config description**: Translation dataset from English to ga.
 
@@ -651,7 +689,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enhr <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enhr
 
 *   **Config description**: Translation dataset from English to hr.
 
@@ -716,7 +754,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enhu <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enhu
 
 *   **Config description**: Translation dataset from English to hu.
 
@@ -781,7 +819,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enit <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enit
 
 *   **Config description**: Translation dataset from English to it.
 
@@ -846,7 +884,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enlt <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enlt
 
 *   **Config description**: Translation dataset from English to lt.
 
@@ -911,7 +949,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enlv <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enlv
 
 *   **Config description**: Translation dataset from English to lv.
 
@@ -976,7 +1014,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enmt <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enmt
 
 *   **Config description**: Translation dataset from English to mt.
 
@@ -1041,7 +1079,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/ennl <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/ennl
 
 *   **Config description**: Translation dataset from English to nl.
 
@@ -1106,7 +1144,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enpl <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enpl
 
 *   **Config description**: Translation dataset from English to pl.
 
@@ -1171,7 +1209,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enpt <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enpt
 
 *   **Config description**: Translation dataset from English to pt.
 
@@ -1236,7 +1274,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/enro <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/enro
 
 *   **Config description**: Translation dataset from English to ro.
 
@@ -1301,7 +1339,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/ensk <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/ensk
 
 *   **Config description**: Translation dataset from English to sk.
 
@@ -1366,7 +1404,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/ensl <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/ensl
 
 *   **Config description**: Translation dataset from English to sl.
 
@@ -1431,7 +1469,7 @@ $(document).ready(() => {
 
 <!-- mdformat on -->
 
-## para_crawl/ensv <span class="material-icons" title="Available only in the tfds-nightly package">nights_stay</span>
+## para_crawl/ensv
 
 *   **Config description**: Translation dataset from English to sv.
 

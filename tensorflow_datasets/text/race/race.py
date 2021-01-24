@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,14 +48,14 @@ def _make_builder_config(module):
   )
 
 
-def _get_option_index(answer):
-  return ord(answer) - ord("A")
-
-
 class Race(tfds.core.GeneratorBasedBuilder):
   """DatasetBuilder for race dataset."""
 
-  VERSION = tfds.core.Version("1.0.0")
+  VERSION = tfds.core.Version("2.0.0")
+  RELEASE_NOTES = {
+      "2.0.0": "Add the example id.",
+      "1.0.0": "Initial release.",
+  }
   BUILDER_CONFIGS = [_make_builder_config(module) for module in _MODULES]
 
   def _info(self) -> tfds.core.DatasetInfo:
@@ -64,9 +64,17 @@ class Race(tfds.core.GeneratorBasedBuilder):
         builder=self,
         description=_DESCRIPTION,
         features=tfds.features.FeaturesDict({
-            "article": tfds.features.Text(),
-            "question": tfds.features.Text(),
-            "answer": tfds.features.Text()
+            "article":
+                tfds.features.Text(),
+            "questions":
+                tfds.features.Sequence(tfds.features.Text()),
+            "answers":
+                tfds.features.Sequence(tfds.features.Text()),
+            "options":
+                tfds.features.Sequence(
+                    tfds.features.Sequence(tfds.features.Text())),
+            "example_id":
+                tfds.features.Text()
         }),
         supervised_keys=None,  # Set to `None` to disable
         homepage="https://www.cs.cmu.edu/~glai1/data/race/",
@@ -99,14 +107,10 @@ class Race(tfds.core.GeneratorBasedBuilder):
     for file in path.iterdir():
       # Each file is one example and only has one line of the content.
       row = json.loads(file.read_text())
-      article = row["article"]
-      ex_id = row["id"]
-      question_length = len(row["questions"])
-      for idx in range(question_length):
-        question = row["questions"][idx]
-        option = row["options"][idx][_get_option_index(row["answers"][idx])]
-        yield ex_id + "_" + str(idx), {
-            "article": article,
-            "question": question,
-            "answer": option
-        }
+      yield row["id"], {
+          "article": row["article"],
+          "questions": row["questions"],
+          "answers": row["answers"],
+          "options": row["options"],
+          "example_id": row["id"]
+      }

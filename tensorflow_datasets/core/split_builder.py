@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -352,9 +352,16 @@ class SplitBuilder:
         file_format=self._file_format,
     )
     for key, example in utils.tqdm(
-        generator, unit=' examples', total=total_num_examples, leave=False
+        generator,
+        desc=f'Generating {split_name} examples...',
+        unit=' examples',
+        total=total_num_examples,
+        leave=False,
     ):
-      example = self._features.encode_example(example)
+      try:
+        example = self._features.encode_example(example)
+      except Exception as e:  # pylint: disable=broad-except
+        utils.reraise(e, prefix=f'Failed to encode example:\n{example}\n')
       writer.write(key, example)
     shard_lengths, total_size = writer.finalize()
 

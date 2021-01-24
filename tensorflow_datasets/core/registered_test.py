@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ class EmptyDatasetBuilder(registered.RegisteredDataset):
     self.as_dataset_kwargs = kwargs
     return self
 
+  builder_configs = {}
+
 
 class UnregisteredBuilder(EmptyDatasetBuilder):
 
@@ -59,7 +61,8 @@ class RegisteredTest(testing.TestCase):
     self.assertIn(name, load.list_builders())
 
     nonexistent = "nonexistent_foobar_dataset"
-    with self.assertRaisesWithPredicateMatch(ValueError, "not found"):
+    with self.assertRaisesWithPredicateMatch(
+        registered.DatasetNotFoundError, "not found"):
       load.builder(nonexistent)
     # Prints registered datasets
     with self.assertRaisesWithPredicateMatch(ValueError, name):
@@ -83,7 +86,9 @@ class RegisteredTest(testing.TestCase):
     self.assertEqual(name, UnregisteredBuilder.name)
     self.assertNotIn(name, load.list_builders())
 
-    with self.assertRaisesWithPredicateMatch(ValueError, "an abstract class"):
+    with self.assertRaisesWithPredicateMatch(
+        TypeError, "Can't instantiate abstract class"
+    ):
       load.builder(name)
 
   def test_builder_with_kwargs(self):

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,3 +20,9 @@
 * Pytest: Those functions are wrapped in `@fixture`.
 
 """
+
+from unittest import mock
+
+import tensorflow as tf
+from tensorflow_datasets.core import constants
+from tensorflow_datasets.testing import test_utils

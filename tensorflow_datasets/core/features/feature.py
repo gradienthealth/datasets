@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 
 import abc
 import collections
+import functools
+import html
 import json
 import os
 from typing import Dict, Type, TypeVar
@@ -29,6 +31,7 @@ from tensorflow_datasets.core import utils
 from tensorflow_datasets.core.utils import type_utils
 
 Json = type_utils.Json
+Shape = type_utils.Shape
 
 T = TypeVar('T', bound='FeatureConnector')
 
@@ -36,9 +39,16 @@ T = TypeVar('T', bound='FeatureConnector')
 class TensorInfo(object):
   """Structure containing info on the `tf.Tensor` shape/dtype."""
 
-  __slots__ = ['shape', 'dtype', 'default_value', 'sequence_rank']
+  __slots__ = [
+      'shape', 'dtype', 'default_value', 'sequence_rank', 'dataset_lvl'
+  ]
 
-  def __init__(self, shape, dtype, default_value=None, sequence_rank=None):
+  def __init__(self,
+               shape,
+               dtype,
+               default_value=None,
+               sequence_rank=None,
+               dataset_lvl=0):
     """Constructor.
 
     Args:
@@ -47,11 +57,13 @@ class TensorInfo(object):
       default_value: Used for retrocompatibility with previous files if a new
         field is added to provide a default value when reading the file.
       sequence_rank: `int`, Number of `tfds.features.Sequence` dimension.
+      dataset_lvl: `int`, if >0, nesting level of a `tfds.features.Dataset`.
     """
     self.shape = shape
     self.dtype = dtype
     self.default_value = default_value
     self.sequence_rank = sequence_rank or 0
+    self.dataset_lvl = dataset_lvl
 
   @classmethod
   def copy_from(cls, tensor_info):
@@ -61,15 +73,13 @@ class TensorInfo(object):
         dtype=tensor_info.dtype,
         default_value=tensor_info.default_value,
         sequence_rank=tensor_info.sequence_rank,
+        dataset_lvl=tensor_info.dataset_lvl,
     )
 
   def __eq__(self, other):
     """Equality."""
-    return (
-        self.shape == other.shape and
-        self.dtype == other.dtype and
-        self.default_value == other.default_value
-    )
+    return (self.shape == other.shape and self.dtype == other.dtype and
+            self.default_value == other.default_value)
 
   def __repr__(self):
     return '{}(shape={}, dtype={})'.format(
@@ -412,18 +422,39 @@ class FeatureConnector(object):
       tensor_data: Tensor or dictionary of tensor, output of the tf.data.Dataset
         object
     """
+    ex = tfexample_data
+
     # Note: This all works fine in Eager mode (without tf.function) because
     # tf.data pipelines are always executed in Graph mode.
 
     # Apply the decoding to each of the individual distributed features.
-    return tf.map_fn(
+    decode_map_fn = functools.partial(
+        tf.map_fn,
         self.decode_example,
-        tfexample_data,
         fn_output_signature=self.dtype,
         parallel_iterations=10,
-        back_prop=False,
         name='sequence_decode',
     )
+
+    if (
+        # input/output could potentially be a `dict` for custom feature
+        # connectors. Empty length not supported for those for now.
+        isinstance(ex, dict)
+        or isinstance(self.shape, dict)
+        or not _has_shape_ambiguity(in_shape=ex.shape, out_shape=self.shape)
+    ):
+      return decode_map_fn(ex)
+    else:
+      # `tf.map_fn` cannot resolve ambiguity when decoding an empty sequence
+      # with unknown output shape (e.g. decode images `tf.string`):
+      # `(0,)` -> `(0, None, None, 3)`.
+      # Instead, we arbitrarily set unknown shape to `0`:
+      # `(0,)` -> `(0, 0, 0, 3)`
+      return tf.cond(
+          tf.equal(tf.shape(ex)[0], 0),  # Empty sequence
+          lambda: _make_empty_seq_output(shape=self.shape, dtype=self.dtype),
+          lambda: decode_map_fn(ex),
+      )
 
   def decode_ragged_example(self, tfexample_data):
     """Decode nested features from a tf.RaggedTensor.
@@ -450,7 +481,18 @@ class FeatureConnector(object):
 
   def repr_html_batch(self, ex: np.ndarray) -> str:
     """Returns the HTML str representation of the object (Sequence)."""
-    return _repr_html(ex)
+    _MAX_SUB_ROWS = 7  # pylint: disable=invalid-name
+    # Truncate sequences which contains too many sub-examples
+    if len(ex) > _MAX_SUB_ROWS:
+      ex = ex[:_MAX_SUB_ROWS]
+      overflow = ['...']
+    else:
+      overflow = []
+    batch_ex = '<br/>'.join([self.repr_html(x) for x in ex] + overflow)
+    # TODO(tfds): How to limit the max-height to the neighboors cells ?
+    return (
+        f'<div style="overflow-y: scroll; max-height: 300px;" >{batch_ex}</div>'
+    )
 
   def repr_html_ragged(self, ex: np.ndarray) -> str:
     """Returns the HTML str representation of the object (Nested sequence)."""
@@ -528,7 +570,7 @@ class FeatureConnector(object):
     ])
     ```
 
-    Will produce the following flattened output:
+    Will produce the following nested output:
     ```
     {
         'a': None,
@@ -641,6 +683,11 @@ class Tensor(FeatureConnector):
   def encode_example(self, example_data):
     """See base class for details."""
     np_dtype = np.dtype(self.dtype.as_numpy_dtype)
+    if isinstance(example_data, tf.Tensor):
+      raise TypeError(
+          f'Error encoding: {example_data!r}. `_generate_examples` should '
+          'yield `np.array` compatible values, not `tf.Tensor`'
+      )
     if not isinstance(example_data, np.ndarray):
       example_data = np.array(example_data, dtype=np_dtype)
     # Ensure the shape and dtype match
@@ -696,4 +743,32 @@ def _repr_html(ex) -> str:
     # Do not print individual values for array as it is slow
     # TODO(tfds): We could display a snippet, like the first/last tree items
     return f'{type(ex).__qualname__}(shape={ex.shape}, dtype={ex.dtype})'
-  return repr(ex)
+
+  # Escape symbols which might have special meaning in HTML like '<', '>'
+  return html.escape(repr(ex))
+
+
+def _has_shape_ambiguity(in_shape: Shape, out_shape: Shape) -> bool:
+  """Returns True if the shape can be an empty sequence with unknown shape."""
+  # Normalize shape if running with `tf.compat.v1.disable_v2_tensorshape`
+  if isinstance(in_shape, tf.TensorShape):
+    in_shape = in_shape.as_list()  # pytype: disable=attribute-error
+
+  return bool(
+      in_shape[0] is None  # Empty sequence
+      # Unknown output shape (note that sequence length isn't present,
+      # as `self.shape` is called from the inner feature).
+      and None in out_shape
+  )
+
+
+def _make_empty_seq_output(
+    shape: Shape,
+    dtype: tf.dtypes.DType,
+) -> tf.Tensor:
+  """Return an empty (0, *shape) `tf.Tensor` with `0` instead of `None`."""
+  if not isinstance(shape, (tuple, list)) or None not in shape:
+    raise ValueError(f'Could not construct empty output for shape: {shape}')
+  return tf.constant(
+      [], shape=[0] + [0 if d is None else d for d in shape], dtype=dtype
+  )

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 """
 
 import typing
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import dataclasses
 import numpy as np
@@ -32,10 +32,14 @@ from tensorflow_datasets.core.utils import type_utils
 
 try:
   import pandas  # pylint: disable=g-import-not-at-top
-  import pandas.io.formats.style  # pylint: disable=g-import-not-at-top
   DataFrame = pandas.DataFrame
 except ImportError:
   DataFrame = object
+
+
+# Should be `pandas.io.formats.style.Styler`, but is a costly import
+Styler = Any
+
 
 TreeDict = type_utils.TreeDict
 
@@ -78,9 +82,20 @@ class ColumnInfo:
     elif sequence_rank > 1:
       repr_fn = feature.repr_html_ragged
 
+    def repr_fn_with_debug(val):  # Wrap repr_fn to add debug info
+      try:
+        return repr_fn(val)
+      except Exception as e:  # pylint: disable=broad-except
+        err_msg = (
+            f'HTML formatting of column {name} failed:\n'
+            f' * feature: {feature}\n'
+            f' * input: {val!r}\n'
+        )
+        py_utils.reraise(e, prefix=err_msg)
+
     return ColumnInfo(
         name='/'.join(path),
-        format_fn=repr_fn,
+        format_fn=repr_fn_with_debug,
     )
 
 
@@ -92,8 +107,15 @@ def _get_feature(
   sequence_rank = 0
 
   # Collapse the nested sequences
-  # Subclasses like `Video` shouldn't be recursed into.
-  while type(feature) == features.Sequence:  # pylint: disable=unidiomatic-typecheck
+  while isinstance(feature, features.Sequence):
+    # Subclasses like `Video` shouldn't be recursed into.
+    # But sequence of dict like `TranslationVariableLanguages` should.
+    # Currently, there is no good way for a composed sub-feature to only
+    # display a single column instead of one per sub-feature.
+    # So `MyFeature({'x': tf.int32, 'y': tf.bool})` will have 2 columns `x`
+    # and `y`.
+    if type(feature) != features.Sequence and not path:  # pylint: disable=unidiomatic-typecheck
+      break
     sequence_rank += 1
     feature = feature.feature  # Extract inner feature  # pytype: disable=attribute-error
 
@@ -126,10 +148,10 @@ class StyledDataFrame(DataFrame):
     super().__init__(*args, **kwargs)
     # Use name-mangling for forward-compatibility in case pandas
     # adds a `_styler` attribute in the future.
-    self.__styler: Optional[pandas.io.formats.style.Styler] = None
+    self.__styler: Optional[Styler] = None
 
   @property
-  def current_style(self) -> 'pandas.io.formats.style.Styler':
+  def current_style(self) -> Styler:
     """Like `pandas.DataFrame.style`, but attach the style to the DataFrame."""
     if self.__styler is None:
       self.__styler = super().style

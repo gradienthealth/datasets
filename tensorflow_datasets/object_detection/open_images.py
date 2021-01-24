@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -307,7 +307,7 @@ def _resize_image_if_necessary(image_fobj, target_pixels=None):
   cv2 = tfds.core.lazy_imports.cv2
   # Decode image using OpenCV2.
   image = cv2.imdecode(
-      np.fromstring(image_fobj.read(), dtype=np.uint8), flags=3)
+      np.frombuffer(image_fobj.read(), dtype=np.uint8), flags=3)
   # Get image height and width.
   height, width, _ = image.shape
   actual_pixels = height * width

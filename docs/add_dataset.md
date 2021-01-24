@@ -8,6 +8,32 @@ is already present.
 
 Note: Googlers, see [tfds-add](http://goto.google.com/tfds-add) guide.
 
+## TL;DR
+
+The easiest way to write a new dataset is to use the
+[TFDS CLI](https://www.tensorflow.org/datasets/cli):
+
+```sh
+cd path/to/my/project/datasets/
+tfds new my_dataset  # Create `my_dataset/my_dataset.py` template files
+# [...] Manually modify `my_dataset/my_dataset.py` to implement your dataset.
+cd my_dataset/
+tfds build  # Download and prepare the dataset to `~/tensorflow_datasets/`
+```
+
+To use the new dataset with `tfds.load('my_dataset')`:
+
+*   `tfds.load` will automatically detect and load the dataset generated in
+    `~/tensorflow_datasets/my_dataset/` (e.g. by `tfds build`).
+*   Alternatively, you can explicitly `import my.project.datasets.my_dataset` to
+    register your dataset:
+
+```python
+import my.project.datasets.my_dataset  # Register `my_dataset`
+
+ds = tfds.load('my_dataset')  # `my_dataset` registered
+```
+
 ## Overview
 
 Datasets are distributed in all kinds of formats and in all kinds of places,
@@ -46,9 +72,9 @@ structure:
 my_dataset/
     __init__.py
     my_dataset.py # Dataset definition
-    my_dataset_test.py # Test
-    dummy_data/ # Fake data (used for testing)
-    checksum.tsv # URL checksums (see `checksums` section).
+    my_dataset_test.py # (optional) Test
+    dummy_data/ # (optional) Fake data (used for testing)
+    checksum.tsv # (optional) URL checksums (see `checksums` section).
 ```
 
 Search for `TODO(my_dataset)` here and modify accordingly.
@@ -140,7 +166,7 @@ def _info(self):
   )
 ```
 
-Most fields should be self-explainatory. Some precisions:
+Most fields should be self-explanatory. Some precisions:
 
 *   `features`: This specify the dataset structure, shape,... Support complex
     data types (audio, video, nested sequences,...). See the
@@ -195,8 +221,9 @@ assert extracted_paths == {
 
 Some data cannot be automatically downloaded (e.g. require a login), in this
 case, user will manually download the source data and place it in `manual_dir/`
-(defaults to `~/tensorflow_datasets/downloads/manual/`). Files can then be
-accessed through `dl_manager.manual_dir`:
+(defaults to `~/tensorflow_datasets/downloads/manual/`).
+
+Files can then be accessed through `dl_manager.manual_dir`:
 
 ```python
 class MyDataset(tfds.core.GeneratorBasedBuilder):
@@ -207,12 +234,19 @@ class MyDataset(tfds.core.GeneratorBasedBuilder):
   """
 
   def _split_generators(self, dl_manager):
-    data = dl_manager.manual_dir / 'data.zip'
+    # data_path is a pathlib-like `Path('<manual_dir>/data.zip')`
+    archive_path = dl_manager.manual_dir / 'data.zip'
+    # Extract the manually downloaded `data.zip`
+    extracted_path = dl_manager.extract(archive_path)
+    ...
 ```
+
+The `manual_dir` location can be customized with `tfds build --manual_dir=` or
+using `tfds.download.DownloadConfig`.
 
 #### Read archive directly
 
-`dl_manager.iter_archive` reads an archives sequencially without extracting
+`dl_manager.iter_archive` reads an archives sequentially without extracting
 them. This can save storage space and improve performances on some file systems.
 
 ```python
@@ -441,7 +475,7 @@ for full list of flags.
 
 ### Checksums
 
-It is recommanded to record the checksums of your datasets to guarantee
+It is recommended to record the checksums of your datasets to guarantee
 determinism, help with documentation,... This is done by generating the dataset
 with the `--register_checksums` (see previous section).
 
@@ -498,8 +532,8 @@ python my_dataset_test.py
 
 ## Send us feedback
 
-We are continously trying to improve the dataset creation workflow, but can only
-do so if we are aware of the issues. Which issues, errors did you encountered
-while creating the dataset ? Was there a part which was confusing, boilerplate
-or wasn't working the first time ? Please share your
+We are continuously trying to improve the dataset creation workflow, but can
+only do so if we are aware of the issues. Which issues, errors did you
+encountered while creating the dataset ? Was there a part which was confusing,
+boilerplate or wasn't working the first time ? Please share your
 [feedback on github](https://github.com/tensorflow/datasets/issues).

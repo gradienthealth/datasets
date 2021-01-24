@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 """Structured datasets."""
 
 from tensorflow_datasets.structured.amazon_us_reviews import AmazonUSReviews
+from tensorflow_datasets.structured.cherry_blossoms import CherryBlossoms
+from tensorflow_datasets.structured.dart import Dart
 from tensorflow_datasets.structured.e2e_cleaned import E2eCleaned
+from tensorflow_datasets.structured.efron_morris_75 import EfronMorris75
 from tensorflow_datasets.structured.forest_fires import ForestFires
 from tensorflow_datasets.structured.genomics_ood import GenomicsOod
 from tensorflow_datasets.structured.german_credit_numeric import GermanCreditNumeric
@@ -29,4 +32,6 @@ from tensorflow_datasets.structured.rock_you import RockYou
 from tensorflow_datasets.structured.titanic import Titanic
 from tensorflow_datasets.structured.web_nlg.web_nlg import WebNlg
 from tensorflow_datasets.structured.wiki_bio import WikiBio
+from tensorflow_datasets.structured.wiki_table_questions import WikiTableQuestions
+from tensorflow_datasets.structured.wiki_table_text import WikiTableText
 from tensorflow_datasets.structured.wine_quality import WineQuality

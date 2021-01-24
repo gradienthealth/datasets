@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ def as_path(path: PathLike) -> ReadWritePath:
   """
   is_windows = os.name == 'nt'
   if isinstance(path, str):
-    if is_windows and not path.startswith('gs://'):
+    if is_windows and not path.startswith(gpath.URI_PREFIXES):
       return gpath.WindowsGPath(path)
     else:
       return gpath.PosixGPath(path)  # On linux, or for `gs://`, uses `GPath`

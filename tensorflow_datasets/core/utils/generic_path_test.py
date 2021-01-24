@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,11 @@ def test_windows_encoding():
 
     # Other `GPath` and `gs://` should be `PosixPurePath`
     path = generic_path.as_path('gs://some_dir/abc')
+    assert not isinstance(path, gpath.WindowsGPath)
+    assert isinstance(path, gpath.PosixGPath)
+
+    # Other `GPath` and `s3://` should be `PosixPurePath`
+    path = generic_path.as_path('s3://some_dir/abc')
     assert not isinstance(path, gpath.WindowsGPath)
     assert isinstance(path, gpath.PosixGPath)
 

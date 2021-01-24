@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import os
 import tempfile
 from unittest import mock
 
-from absl.testing import absltest
 import dataclasses
 import dill
 import numpy as np
@@ -140,7 +139,7 @@ class DatasetBuilderTest(testing.TestCase):
   def test_load_from_gcs(self):
     from tensorflow_datasets.image_classification import mnist  # pylint:disable=import-outside-toplevel,g-import-not-at-top
     with testing.tmp_dir(self.get_temp_dir()) as tmp_dir:
-      with absltest.mock.patch.object(
+      with mock.patch.object(
           mnist.MNIST, "_download_and_prepare",
           side_effect=NotImplementedError):
         # Make sure the dataset cannot be generated.
@@ -523,7 +522,7 @@ class BuilderRestoreGcsTest(testing.TestCase):
       mnist_info_path = os.path.normpath(mnist_info_path)
       self.read_from_directory(mnist_info_path)
 
-    patcher = absltest.mock.patch.object(
+    patcher = mock.patch.object(
         dataset_info.DatasetInfo,
         "initialize_from_bucket",
         new=load_mnist_dataset_info
@@ -532,7 +531,7 @@ class BuilderRestoreGcsTest(testing.TestCase):
     self.patch_gcs = patcher
     self.addCleanup(patcher.stop)
 
-    patcher = absltest.mock.patch.object(
+    patcher = mock.patch.object(
         dataset_info.DatasetInfo, "compute_dynamic_properties",
     )
     self.compute_dynamic_property = patcher.start()
@@ -630,14 +629,14 @@ class DatasetBuilderReadTest(testing.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(DatasetBuilderReadTest, cls).setUpClass()
+    super().setUpClass()
     cls._tfds_tmp_dir = testing.make_tmp_dir()
     builder = DummyDatasetSharedGenerator(data_dir=cls._tfds_tmp_dir)
     builder.download_and_prepare()
 
   @classmethod
   def tearDownClass(cls):
-    super(DatasetBuilderReadTest, cls).tearDownClass()
+    super().tearDownClass()
     testing.rm_tmp_dir(cls._tfds_tmp_dir)
 
   def setUp(self):
@@ -736,6 +735,10 @@ class DatasetBuilderReadTest(testing.TestCase):
         shuffle_files=True,
         read_config=read_config_lib.ReadConfig(),
     ))
+
+  def test_with_tfds_info(self):
+    ds = self.builder.as_dataset(split=splits_lib.Split.TRAIN)
+    self.assertEqual(0, len(tf.compat.v1.data.get_output_shapes(ds)["x"]))
 
 
 

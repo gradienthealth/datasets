@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -177,7 +177,10 @@ def refactor_dataset(ds_name: str) -> None:
 
 def refactor_datasets() -> None:
   """Refactoring all dataset into one folder."""
-  for ds_name in FLAGS.datasets.split(',') or tfds.list_builders():
+  for ds_name in (
+      FLAGS.datasets.split(',')
+      or tfds.list_builders(with_community_datasets=False)
+  ):
     refactor_dataset(ds_name)
 
 

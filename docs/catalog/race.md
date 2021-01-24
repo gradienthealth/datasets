@@ -2,7 +2,6 @@
   <div itemscope itemprop="includedInDataCatalog" itemtype="http://schema.org/DataCatalog">
     <meta itemprop="name" content="TensorFlow Datasets" />
   </div>
-
   <meta itemprop="name" content="race" />
   <meta itemprop="description" content="Race is a large-scale reading comprehension dataset with more than 28,000&#10;passages and nearly 100,000 questions. The dataset is collected from English&#10;examinations in China, which are designed for middle school and high school&#10;students. The dataset can be served as the training and test sets for machine&#10;comprehension.&#10;&#10;To use this dataset:&#10;&#10;```python&#10;import tensorflow_datasets as tfds&#10;&#10;ds = tfds.load(&#x27;race&#x27;, split=&#x27;train&#x27;)&#10;for ex in ds.take(4):&#10;  print(ex)&#10;```&#10;&#10;See [the guide](https://www.tensorflow.org/datasets/overview) for more&#10;informations on [tensorflow_datasets](https://www.tensorflow.org/datasets).&#10;&#10;" />
   <meta itemprop="url" content="https://www.tensorflow.org/datasets/catalog/race" />
@@ -30,7 +29,8 @@ comprehension.
 
 *   **Versions**:
 
-    *   **`1.0.0`** (default): No release notes.
+    *   `1.0.0`: Initial release.
+    *   **`2.0.0`** (default): Add the example id.
 
 *   **Download size**: `24.26 MiB`
 
@@ -42,9 +42,11 @@ comprehension.
 
 ```python
 FeaturesDict({
-    'answer': Text(shape=(), dtype=tf.string),
+    'answers': Sequence(Text(shape=(), dtype=tf.string)),
     'article': Text(shape=(), dtype=tf.string),
-    'question': Text(shape=(), dtype=tf.string),
+    'example_id': Text(shape=(), dtype=tf.string),
+    'options': Sequence(Sequence(Text(shape=(), dtype=tf.string))),
+    'questions': Sequence(Text(shape=(), dtype=tf.string)),
 })
 ```
 
@@ -67,30 +69,94 @@ FeaturesDict({
     ([tfds.show_examples](https://www.tensorflow.org/datasets/api_docs/python/tfds/visualization/show_examples)):
     Not supported.
 
-*   **Examples**
-    ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
-    Missing.
-
 ## race/high (default config)
 
-*   **Dataset size**: `127.23 MiB`
+*   **Dataset size**: `52.39 MiB`
 
 *   **Splits**:
 
 Split     | Examples
 :-------- | -------:
-`'dev'`   | 3,451
-`'test'`  | 3,498
-`'train'` | 62,445
+`'dev'`   | 1,021
+`'test'`  | 1,045
+`'train'` | 18,728
+
+*   **Examples**
+    ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
+
+<!-- mdformat off(HTML should not be auto-formatted) -->
+
+{% framebox %}
+
+<button id="displaydataframe">Display examples...</button>
+<div id="dataframecontent" style="overflow-x:scroll"></div>
+<script src="https://www.gstatic.com/external_hosted/jquery2.min.js"></script>
+<script>
+var url = "https://storage.googleapis.com/tfds-data/visualization/dataframe/race-high-2.0.0.html";
+$(document).ready(() => {
+  $("#displaydataframe").click((event) => {
+    // Disable the button after clicking (dataframe loaded only once).
+    $("#displaydataframe").prop("disabled", true);
+
+    // Pre-fetch and display the content
+    $.get(url, (data) => {
+      $("#dataframecontent").html(data);
+    }).fail(() => {
+      $("#dataframecontent").html(
+        'Error loading examples. If the error persist, please open '
+        + 'a new issue.'
+      );
+    });
+  });
+});
+</script>
+
+{% endframebox %}
+
+<!-- mdformat on -->
 
 ## race/middle
 
-*   **Dataset size**: `31.35 MiB`
+*   **Dataset size**: `12.51 MiB`
 
 *   **Splits**:
 
 Split     | Examples
 :-------- | -------:
-`'dev'`   | 1,436
-`'test'`  | 1,436
-`'train'` | 25,421
+`'dev'`   | 368
+`'test'`  | 362
+`'train'` | 6,409
+
+*   **Examples**
+    ([tfds.as_dataframe](https://www.tensorflow.org/datasets/api_docs/python/tfds/as_dataframe)):
+
+<!-- mdformat off(HTML should not be auto-formatted) -->
+
+{% framebox %}
+
+<button id="displaydataframe">Display examples...</button>
+<div id="dataframecontent" style="overflow-x:scroll"></div>
+<script src="https://www.gstatic.com/external_hosted/jquery2.min.js"></script>
+<script>
+var url = "https://storage.googleapis.com/tfds-data/visualization/dataframe/race-middle-2.0.0.html";
+$(document).ready(() => {
+  $("#displaydataframe").click((event) => {
+    // Disable the button after clicking (dataframe loaded only once).
+    $("#displaydataframe").prop("disabled", true);
+
+    // Pre-fetch and display the content
+    $.get(url, (data) => {
+      $("#dataframecontent").html(data);
+    }).fail(() => {
+      $("#dataframecontent").html(
+        'Error loading examples. If the error persist, please open '
+        + 'a new issue.'
+      );
+    });
+  });
+});
+</script>
+
+{% endframebox %}
+
+<!-- mdformat on -->

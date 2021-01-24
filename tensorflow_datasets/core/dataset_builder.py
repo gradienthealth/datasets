@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 import abc
 import functools
 import inspect
+import json
 import os
 import sys
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
@@ -45,6 +46,7 @@ from tensorflow_datasets.core.utils import type_utils
 import termcolor
 
 ReadOnlyPath = type_utils.ReadOnlyPath
+ReadWritePath = type_utils.ReadWritePath
 VersionOrStr = Union[utils.Version, str]
 
 
@@ -282,7 +284,19 @@ class DatasetBuilder(registered.RegisteredDataset):
     # Used:
     # * To load the checksums (in url_infos)
     # * To save the checksums (in DownloadManager)
-    return cls.code_path.parent / "checksums.tsv"
+    new_path = cls.code_path.parent / "checksums.tsv"
+    # Checksums of legacy datasets are located in a separate dir.
+    legacy_path = utils.tfds_path() / "url_checksums" / f"{cls.name}.txt"
+    if (
+        # zipfile.Path does not have `.parts`. Additionally, `os.fspath`
+        # will extract the file, so use `str`.
+        "tensorflow_datasets" in str(new_path)
+        and legacy_path.exists()
+        and not new_path.exists()
+    ):
+      return legacy_path
+    else:
+      return new_path
 
   @utils.classproperty
   @classmethod
@@ -395,15 +409,24 @@ class DatasetBuilder(registered.RegisteredDataset):
       raise IOError(
           "Not enough disk space. Needed: {} (download: {}, generated: {})"
           .format(
-              units.size_str(self.info.dataset_size + self.info.download_size),
-              units.size_str(self.info.download_size),
-              units.size_str(self.info.dataset_size),
+              self.info.dataset_size + self.info.download_size,
+              self.info.download_size,
+              self.info.dataset_size,
           ))
     self._log_download_bytes()
 
     dl_manager = self._make_download_manager(
         download_dir=download_dir,
-        download_config=download_config)
+        download_config=download_config,
+    )
+
+    # Maybe save the `builder_cls` metadata common to all builder configs.
+    if self.BUILDER_CONFIGS:
+      _save_default_config_name(
+          # `data_dir/ds_name/config/version/` -> `data_dir/ds_name/`
+          common_dir=self.data_path.parent.parent,
+          default_config_name=self.BUILDER_CONFIGS[0].name,
+      )
 
     # Create a tmp dir and rename to self._data_dir on successful exit.
     with utils.incomplete_dir(self._data_dir) as tmp_data_dir:
@@ -412,7 +435,7 @@ class DatasetBuilder(registered.RegisteredDataset):
       with utils.temporary_assignment(self, "_data_dir", tmp_data_dir):
         if (download_config.try_download_gcs and
             gcs_utils.is_dataset_on_gcs(self.info.full_name)):
-          logging.warning(GCS_HOSTED_MSG, self.name)
+          logging.info(GCS_HOSTED_MSG, self.name)
           gcs_utils.download_gcs_dataset(self.info.full_name, self._data_dir)
           self.info.read_from_directory(self._data_dir)
         else:
@@ -439,14 +462,13 @@ class DatasetBuilder(registered.RegisteredDataset):
           statistics_already_computed = bool(
               splits and splits[0].statistics.num_examples)
           # Update DatasetInfo metadata by computing statistics from the data.
-          if (skip_stats_computation or
-              download_config.compute_stats == download.ComputeStatsMode.SKIP or
-              download_config.compute_stats == download.ComputeStatsMode.AUTO
+          if (
+              skip_stats_computation
+              or download_config.compute_stats == download.ComputeStatsMode.SKIP
+              or download_config.compute_stats == download.ComputeStatsMode.AUTO
               and statistics_already_computed
-             ):
-            logging.info(
-                "Skipping computing stats for mode %s.",
-                download_config.compute_stats)
+          ):
+            pass
           else:  # Mode is forced or stats do not exists yet
             logging.info("Computing statistics.")
             self.info.compute_dynamic_properties()
@@ -611,8 +633,7 @@ class DatasetBuilder(registered.RegisteredDataset):
             "as_supervised=True but %s does not support a supervised "
             "(input, label) structure." % self.name)
       input_f, target_f = self.info.supervised_keys
-      ds = ds.map(lambda fs: (fs[input_f], fs[target_f]),
-                  num_parallel_calls=tf.data.experimental.AUTOTUNE)
+      ds = ds.map(lambda fs: (fs[input_f], fs[target_f]))
 
     # Add prefetch by default
     if not read_config.skip_prefetch:
@@ -740,11 +761,8 @@ class DatasetBuilder(registered.RegisteredDataset):
     return default_data_dir, data_dir
 
   def _log_download_done(self):
-    msg = ("Dataset {name} downloaded and prepared to {data_dir}. "
-           "Subsequent calls will reuse this data.").format(
-               name=self.name,
-               data_dir=self._data_dir,
-           )
+    msg = (f"Dataset {self.name} downloaded and prepared to {self._data_dir}. "
+           "Subsequent calls will reuse this data.")
     termcolor.cprint(msg, attrs=["bold"])
 
   def _log_download_bytes(self):
@@ -752,14 +770,13 @@ class DatasetBuilder(registered.RegisteredDataset):
     # information needed to cancel download/preparation if needed.
     # This comes right before the progress bar.
     termcolor.cprint(
-        "Downloading and preparing dataset {} (download: {}, generated: {}, "
-        "total: {}) to {}...".format(
-            self.info.full_name,
-            units.size_str(self.info.download_size),
-            units.size_str(self.info.dataset_size),
-            units.size_str(self.info.download_size + self.info.dataset_size),
-            self._data_dir,
-        ), attrs=["bold"])
+        f"Downloading and preparing dataset {self.info.download_size} "
+        f"(download: {self.info.download_size}, "
+        f"generated: {self.info.dataset_size}, "
+        f"total: {self.info.download_size + self.info.dataset_size}) "
+        f"to {self._data_dir}...",
+        attrs=["bold"],
+    )
 
   @abc.abstractmethod
   @utils.docs.doc_private
@@ -943,18 +960,19 @@ class FileReaderBuilder(DatasetBuilder):
       split=splits_lib.Split.TRAIN,
       decoders=None,
       read_config=None,
-      shuffle_files=False):
-    ds = self._tfrecords_reader.read(
+      shuffle_files=False,
+  ) -> tf.data.Dataset:
+    decode_fn = functools.partial(
+        self.info.features.decode_example, decoders=decoders
+    )
+    return self._tfrecords_reader.read(
         name=self.name,
         instructions=split,
         split_infos=self.info.splits.values(),
+        decode_fn=decode_fn,
         read_config=read_config,
         shuffle_files=shuffle_files,
     )
-    decode_fn = functools.partial(
-        self.info.features.decode_example, decoders=decoders)
-    ds = ds.map(decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    return ds
 
 
 class GeneratorBasedBuilder(FileReaderBuilder):
@@ -1129,7 +1147,7 @@ class GeneratorBasedBuilder(FileReaderBuilder):
       split_generators = self._split_generators(  # pylint: disable=unexpected-keyword-arg
           dl_manager, **optional_pipeline_kwargs
       )
-      # TODO(tfds): Could be removed one all datasets are migrated.
+      # TODO(tfds): Could be removed once all datasets are migrated.
       # https://github.com/tensorflow/datasets/issues/2537
       # Legacy mode (eventually convert list[SplitGeneratorLegacy] -> dict)
       split_generators = split_builder.normalize_legacy_split_generators(
@@ -1140,6 +1158,10 @@ class GeneratorBasedBuilder(FileReaderBuilder):
 
       # Ensure `all` isn't used as key.
       _check_split_names(split_generators.keys())
+
+      # Writer fail if the number of example yield is `0`, so we return here.
+      if download_config.max_examples_per_split == 0:
+        return
 
       # Start generating data for all splits
       path_suffix = file_adapters.ADAPTER_FOR_FORMAT[
@@ -1152,17 +1174,19 @@ class GeneratorBasedBuilder(FileReaderBuilder):
               path=self.data_path / f"{self.name}-{split_name}.{path_suffix}",
           )
           for split_name, generator
-          in utils.tqdm(split_generators.items(), unit=" splits", leave=False)
+          in utils.tqdm(
+              split_generators.items(),
+              desc="Generating splits...",
+              unit=" splits",
+              leave=False,
+          )
       ]
     # Finalize the splits (after apache beam completed, if it was used)
     split_infos = [future.result() for future in split_info_futures]
 
     # Update the info object with the splits.
-    # TODO(tfds): Should improve the API.
-    split_dict = splits_lib.SplitDict(dataset_name=self.name)
-    for split_info in split_infos:
-      split_dict.add(split_info)
-    self.info.update_splits_if_different(split_dict)
+    split_dict = splits_lib.SplitDict(split_infos, dataset_name=self.name)
+    self.info.set_splits(split_dict)
 
 
 @utils.docs.deprecated
@@ -1184,3 +1208,37 @@ def _check_split_names(split_names: Iterable[str]) -> None:
     raise ValueError(
         "`all` is a reserved keyword. Split cannot be named like this."
     )
+
+
+def _save_default_config_name(
+    common_dir: ReadWritePath,
+    *,
+    default_config_name: str,
+) -> None:
+  """Saves `builder_cls` metadata (common to all builder configs)."""
+  data = {
+      "default_config_name": default_config_name,
+  }
+  # `data_dir/ds_name/config/version/` -> `data_dir/ds_name/.config`
+  config_dir = common_dir / ".config"
+  config_dir.mkdir(parents=True, exist_ok=True)
+  # Note:
+  # * Save inside a dir to support some replicated filesystem
+  # * Write inside a `.incomplete` file and rename to avoid multiple configs
+  #   writing concurently the same file
+  # * Config file is overwritten each time a config is generated. If the
+  #   default config is changed, this will be updated.
+  config_path = config_dir / "metadata.json"
+  with utils.incomplete_file(config_path) as tmp_config_path:
+    tmp_config_path.write_text(json.dumps(data))
+
+
+def load_default_config_name(
+    common_dir: ReadOnlyPath,
+) -> Optional[str]:
+  """Load `builder_cls` metadata (common to all builder configs)."""
+  config_path = common_dir / ".config/metadata.json"
+  if not config_path.exists():
+    return None
+  data = json.loads(config_path.read_text())
+  return data.get("default_config_name")

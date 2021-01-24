@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ class Kitti(tfds.core.GeneratorBasedBuilder):
       if image_id not in image_ids:
         continue
       annotations = all_annotations[image_id]
-      img = cv2.imdecode(np.fromstring(fobj.read(), dtype=np.uint8),
+      img = cv2.imdecode(np.frombuffer(fobj.read(), dtype=np.uint8),
                          cv2.IMREAD_COLOR)
       img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
       height, width, _ = img.shape

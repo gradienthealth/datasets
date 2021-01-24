@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,10 @@ def builder_cls_from_module(
     # Executing the module will register the datasets in _MODULE_TO_DATASETS.
     with registered.skip_registration():
       importlib.import_module(module_name)
+      # TODO(tfds): For community-installed modules, we should raise cleaner
+      # error if there is additional missing dependency. E.g. Parsing all
+      # import statements. Or wrap this `importlib.import_module` within a
+      # `with lazy_imports():` context manager ?
 
   builder_classes = registered._MODULE_TO_DATASETS.get(module_name, [])  # pylint: disable=protected-access
 

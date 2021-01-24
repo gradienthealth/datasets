@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -119,6 +119,11 @@ class LazyImporter(object):
     # https://github.com/python-pillow/Pillow/blob/5.4.x/src/PIL/Image.py#L407
     _try_import("PIL.TiffImagePlugin")
     return _try_import("PIL.Image")
+
+  @utils.classproperty
+  @classmethod
+  def PIL_ImageDraw(cls):  # pylint: disable=invalid-name
+    return _try_import("PIL.ImageDraw")
 
   @utils.classproperty
   @classmethod

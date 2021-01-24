@@ -82,6 +82,8 @@ toc:
     title: lsun
   - path: /datasets/catalog/nyu_depth_v2
     title: nyu_depth_v2
+  - path: /datasets/catalog/s3o4d
+    title: s3o4d
   - path: /datasets/catalog/scene_parse150
     title: scene_parse150
   - path: /datasets/catalog/shapes3d
@@ -108,6 +110,9 @@ toc:
     title: cassava
   - path: /datasets/catalog/cats_vs_dogs
     title: cats_vs_dogs
+  - path: /datasets/catalog/chexpert
+    status: nightly
+    title: chexpert (manual)
   - path: /datasets/catalog/cifar10
     title: cifar10
   - path: /datasets/catalog/cifar100
@@ -236,6 +241,8 @@ toc:
     title: coco_captions
   - path: /datasets/catalog/kitti
     title: kitti
+  - path: /datasets/catalog/lvis
+    title: lvis
   - path: /datasets/catalog/open_images_challenge2019_detection
     title: open_images_challenge2019_detection
   - path: /datasets/catalog/open_images_v4
@@ -280,8 +287,15 @@ toc:
 - section:
   - path: /datasets/catalog/amazon_us_reviews
     title: amazon_us_reviews
+  - path: /datasets/catalog/cherry_blossoms
+    title: cherry_blossoms
+  - path: /datasets/catalog/dart
+    title: dart
   - path: /datasets/catalog/e2e_cleaned
     title: e2e_cleaned
+  - path: /datasets/catalog/efron_morris75
+    status: nightly
+    title: efron_morris75
   - path: /datasets/catalog/forest_fires
     title: forest_fires
   - path: /datasets/catalog/genomics_ood
@@ -291,7 +305,6 @@ toc:
   - path: /datasets/catalog/higgs
     title: higgs
   - path: /datasets/catalog/howell
-    status: nightly
     title: howell
   - path: /datasets/catalog/iris
     title: iris
@@ -306,10 +319,13 @@ toc:
   - path: /datasets/catalog/titanic
     title: titanic
   - path: /datasets/catalog/web_nlg
-    status: nightly
     title: web_nlg
   - path: /datasets/catalog/wiki_bio
     title: wiki_bio
+  - path: /datasets/catalog/wiki_table_questions
+    title: wiki_table_questions
+  - path: /datasets/catalog/wiki_table_text
+    title: wiki_table_text
   - path: /datasets/catalog/wine_quality
     title: wine_quality
   title: Structured
@@ -368,6 +384,8 @@ toc:
     title: cos_e
   - path: /datasets/catalog/definite_pronoun_resolution
     title: definite_pronoun_resolution
+  - path: /datasets/catalog/drop
+    title: drop
   - path: /datasets/catalog/eraser_multi_rc
     title: eraser_multi_rc
   - path: /datasets/catalog/esnli
@@ -413,7 +431,6 @@ toc:
   - path: /datasets/catalog/qa4mre
     title: qa4mre
   - path: /datasets/catalog/quac
-    status: nightly
     title: quac
   - path: /datasets/catalog/race
     title: race
@@ -448,15 +465,12 @@ toc:
   - path: /datasets/catalog/wordnet
     title: wordnet
   - path: /datasets/catalog/wsc273
-    status: nightly
     title: wsc273
   - path: /datasets/catalog/xnli
     title: xnli
   - path: /datasets/catalog/xtreme_pawsx
-    status: nightly
     title: xtreme_pawsx
   - path: /datasets/catalog/xtreme_xnli
-    status: nightly
     title: xtreme_xnli
   - path: /datasets/catalog/yelp_polarity_reviews
     title: yelp_polarity_reviews
@@ -490,6 +504,8 @@ toc:
 - section:
   - path: /datasets/catalog/bair_robot_pushing_small
     title: bair_robot_pushing_small
+  - path: /datasets/catalog/davis
+    title: davis
   - path: /datasets/catalog/moving_mnist
     title: moving_mnist
   - path: /datasets/catalog/robonet
@@ -499,3 +515,8 @@ toc:
   - path: /datasets/catalog/ucf101
     title: ucf101
   title: Video
+- section:
+  - path: /datasets/catalog/gref
+    status: nightly
+    title: gref (manual)
+  title: Vision language

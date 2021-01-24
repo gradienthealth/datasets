@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ from tensorflow_datasets.core import download
 from tensorflow_datasets.core import decode
 from tensorflow_datasets.core import deprecated
 from tensorflow_datasets.core import features
-from tensorflow_datasets.core import units
 from tensorflow_datasets.core import visualization
 from tensorflow_datasets.core.as_dataframe import as_dataframe
 from tensorflow_datasets.core.folder_dataset import ImageFolder
@@ -38,6 +37,7 @@ from tensorflow_datasets.core.load import list_builders
 from tensorflow_datasets.core.load import load
 from tensorflow_datasets.core.splits import even_splits
 from tensorflow_datasets.core.splits import Split
+from tensorflow_datasets.core.utils import type_utils as typing
 from tensorflow_datasets.core.utils.gcs_utils import is_dataset_on_gcs
 from tensorflow_datasets.core.utils.read_config import ReadConfig
 from tensorflow_datasets.core.utils.tqdm_utils import disable_progress_bar
@@ -77,7 +77,7 @@ __all__ = [
     "show_statistics",
     "testing",
     "TranslateFolder",
-    "units",
+    "typing",
     "visualization",
     "__version__",
 ]

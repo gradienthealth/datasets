@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,14 +39,14 @@ def gcs_mocked_path(tmp_path: pathlib.Path):
 
   gfile_fn_names = [
       'GFile',
-      # 'copy',
+      'copy',
       'exists',
       'glob',
       'isdir',
       'listdir',
       'makedirs',
       'mkdir',
-      # 'remove',
+      'remove',
       'rename',
       'rmtree',
       # 'stat',
@@ -60,12 +60,16 @@ def gcs_mocked_path(tmp_path: pathlib.Path):
       GFile=lambda p, *args, **kwargs: origin_gfile.GFile(  # pylint: disable=g-long-lambda
           _norm_path(p), *args, **kwargs
       ),
+      copy=lambda p1, p2, **kwargs: origin_gfile.copy(  # pylint: disable=g-long-lambda
+          _norm_path(p1), _norm_path(p2), **kwargs
+      ),
       exists=lambda p: origin_gfile.exists(_norm_path(p)),
       glob=lambda p: origin_gfile.glob(_norm_path(p)),
       isdir=lambda p: origin_gfile.isdir(_norm_path(p)),
       listdir=lambda p: origin_gfile.listdir(_norm_path(p)),
       makedirs=lambda p: origin_gfile.makedirs(_norm_path(p)),
       mkdir=lambda p: origin_gfile.mkdir(_norm_path(p)),
+      remove=lambda p: origin_gfile.remove(_norm_path(p)),
       rename=lambda p1, p2, **kwargs: origin_gfile.rename(  # pylint: disable=g-long-lambda
           _norm_path(p1), _norm_path(p2), **kwargs
       ),
@@ -84,6 +88,37 @@ def test_repr_gcs():
   path = path.parent / 'some/other/file.json'
   assert isinstance(path, gpathlib.PosixGPath)
   assert os.fspath(path) == f'{_GCS_SCHEME}bucket/some/other/file.json'
+
+  path = gpathlib.PosixGPath(path, 'other')
+  assert isinstance(path, gpathlib.PosixGPath)
+  assert os.fspath(path) == f'{_GCS_SCHEME}bucket/some/other/file.json/other'
+
+
+def test_repr_s3():
+  path = gpathlib.PosixGPath('s3://bucket/dir')
+  assert isinstance(path, gpathlib.PosixGPath)
+  assert repr(path) == "PosixGPath('s3://bucket/dir')"
+  assert str(path) == 's3://bucket/dir'
+  assert os.fspath(path) == 's3://bucket/dir'
+
+  path = path.parent / 'some/other/file.json'
+  assert isinstance(path, gpathlib.PosixGPath)
+  assert os.fspath(path) == 's3://bucket/some/other/file.json'
+
+  path = gpathlib.PosixGPath(path, 'other')
+  assert isinstance(path, gpathlib.PosixGPath)
+  assert os.fspath(path) == 's3://bucket/some/other/file.json/other'
+
+
+def test_repr_windows():
+  path = gpathlib.WindowsGPath('C:\\Program Files\\Directory')
+  assert isinstance(path, gpathlib.WindowsGPath)
+  assert str(path) == 'C:\\Program Files\\Directory'
+  assert os.fspath(path) == 'C:\\Program Files\\Directory'
+
+  path = path.parent / 'other/file.json'
+  assert isinstance(path, gpathlib.WindowsGPath)
+  assert os.fspath(path) == 'C:\\Program Files\\other\\file.json'
 
 
 @pytest.mark.parametrize(
@@ -180,7 +215,29 @@ def test_open(gcs_mocked_path: pathlib.Path):
   assert len(list(gcs_mocked_path.joinpath('bucket/dataset').iterdir())) == 6
 
 
-def test_read_write(gcs_mocked_path: pathlib.Path):  # pylint: disable=unused-argument
+@pytest.mark.usefixtures('gcs_mocked_path')
+def test_touch():
+  root_path = gpathlib.PosixGPath('gs://bucket/')
+  root_path.mkdir(parents=True)
+  assert root_path.exists()
+
+  # File don't exists, touch create it
+  file_path = root_path / 'test.txt'
+  assert not file_path.exists()
+  file_path.touch()
+  assert file_path.exists()
+  assert file_path.read_text() == ''  # File content is empty  # pylint: disable=g-explicit-bool-comparison
+
+  file_path.write_text('Some content')
+  file_path.touch()  # Should be a no-op
+  assert file_path.read_text() == 'Some content'  # Content still exists
+
+  with pytest.raises(FileExistsError):
+    file_path.touch(exist_ok=False)
+
+
+@pytest.mark.usefixtures('gcs_mocked_path')
+def test_read_write():
 
   gpath = gpathlib.PosixGPath('gs://file.txt')
 
@@ -201,6 +258,24 @@ def test_read_write(gcs_mocked_path: pathlib.Path):  # pylint: disable=unused-ar
 
   gpath.write_bytes(b'def')
   assert gpath.read_bytes() == b'def'
+
+
+@pytest.mark.usefixtures('gcs_mocked_path')
+def test_unlink():
+  path = gpathlib.PosixGPath('gs://bucket')
+  path.mkdir()
+
+  path = path / 'text.txt'
+
+  with pytest.raises(FileNotFoundError):
+    path.unlink()
+
+  path.unlink(missing_ok=True)  # no-op if missing_ok=True
+
+  path.touch()  # Path created
+  assert path.exists()
+  path.unlink()  # Path deleted
+  assert not path.exists()
 
 
 def test_mkdir(gcs_mocked_path: pathlib.Path):
@@ -256,3 +331,19 @@ def test_replace(tmp_path: pathlib.Path):
   assert sorted(gpathlib.PosixGPath(tmp_path).iterdir()) == [
       tmp_path / 'mnist-100.py', tmp_path / 'tfds-dataset.py'
   ]
+
+
+@pytest.mark.usefixtures('gcs_mocked_path')
+def test_copy():
+  src_path = gpathlib.PosixGPath('gs://foo.py')
+  src_path.write_text('abc')
+
+  assert not src_path.parent.joinpath('bar.py').exists()
+  assert not src_path.parent.joinpath('bar2.py').exists()
+
+  src_path.copy('gs://bar.py')
+  src_path.copy(gpathlib.PosixGPath('gs://bar2.py'))
+
+  assert src_path.exists()
+  assert src_path.parent.joinpath('bar.py').read_text() == 'abc'
+  assert src_path.parent.joinpath('bar2.py').read_text() == 'abc'

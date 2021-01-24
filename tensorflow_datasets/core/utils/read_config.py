@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,11 @@ class ReadConfig:
     try_autocache: If True (default) and the dataset satisfy the right
       conditions (dataset small enough, files not shuffled,...) the dataset
       will be cached during the first iteration (through `ds = ds.cache()`).
+    add_tfds_id: If True, examples `dict` in `tf.data.Dataset` will have an
+      additional key `'tfds_id': tf.Tensor(shape=(), dtype=tf.string)`
+      containing the example unique identifier (e.g.
+      'train.tfrecord-000045-of-001024__123').
+       Note: IDs might changes in future version of TFDS.
     shuffle_seed: `tf.int64`, seed forwarded to `tf.data.Dataset.shuffle` during
       file shuffling (which happens when `tfds.load(..., shuffle_files=True)`).
     shuffle_reshuffle_each_iteration: `bool`, forwarded to
@@ -68,17 +73,27 @@ class ReadConfig:
     skip_prefetch: If False (default), add a `ds.prefetch()` op at the end.
       Might be set for performance optimization in some cases (e.g. if you're
       already calling `ds.prefetch()` at the end of your pipeline)
+    num_parallel_calls_for_decode: The number of parallel calls for decoding
+      record. By default using tf.data's AUTOTUNE.
+    num_parallel_calls_for_interleave_files: The number of parallel calls for
+      interleaving files. By default using tf.data's AUTOTUNE.
   """
   # General tf.data.Dataset parametters
   options: tf.data.Options = dataclasses.field(default_factory=tf.data.Options)
   try_autocache: bool = True
+  add_tfds_id: bool = False
   # tf.data.Dataset.shuffle parameters
   shuffle_seed: Optional[int] = None
   shuffle_reshuffle_each_iteration: Optional[bool] = None
   # Interleave parameters
-  # TODO(tfds): Switch interleave values to None
+  # Ideally, we should switch interleave values to None to dynamically set
+  # those value depending on the user system. However, this would make the
+  # generation order non-deterministic accross machines.
   interleave_cycle_length: Optional[int] = 16
   interleave_block_length: Optional[int] = 16
   input_context: Optional[tf.distribute.InputContext] = None
   experimental_interleave_sort_fn: Optional[InterleaveSortFn] = None
   skip_prefetch: bool = False
+  num_parallel_calls_for_decode: Optional[int] = tf.data.experimental.AUTOTUNE
+  num_parallel_calls_for_interleave_files: Optional[int] = (
+      tf.data.experimental.AUTOTUNE)

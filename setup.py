@@ -51,7 +51,7 @@ REQUIRED_PKGS = [
     'future',
     'numpy',
     'promise',
-    'protobuf>=3.6.1',
+    'protobuf>=3.12.2',
     'requests>=2.19.0',
     'six',
     'tensorflow-metadata',
@@ -65,7 +65,6 @@ REQUIRED_PKGS = [
 
 TESTS_REQUIRE = [
     'jupyter',
-    'mako',
     'pytest',
     'pytest-xdist',
     # Lazy-deps required by core
@@ -76,6 +75,8 @@ TESTS_REQUIRE = [
     'tensorflow-data-validation;python_version<"3.7"',
     # TODO(b/142892342): Re-enable
     # 'tensorflow-docs @ git+https://github.com/tensorflow/docs#egg=tensorflow-docs',  # pylint: disable=line-too-long
+    # Required by scripts/documentation/
+    'pyyaml',
 ]
 
 # Additional deps for formatting

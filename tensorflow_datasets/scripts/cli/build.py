@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ from typing import Dict, Iterator, Optional, Tuple, Type
 
 from absl import logging
 import tensorflow_datasets as tfds
-import termcolor
 
 # pylint: disable=logging-format-interpolation
 
@@ -68,16 +67,18 @@ def register_subparser(parsers: argparse._SubParsersAction) -> None:  # pylint: 
       const=1,
       help=
       'When set, only generate the first X examples (default to 1), rather '
-      'than the full dataset.',
+      'than the full dataset.'
+      'If set to 0, only execute the `_split_generators` (which download the '
+      'original data), but skip `_generator_examples`',
   )
 
   # **** Path options ****
   path_group = build_parser.add_argument_group('Paths')
   path_group.add_argument(
       '--data_dir',
-      type=pathlib.Path,
+      type=tfds.core.as_path,
       # Should match tfds.core.constant.DATA_DIR !!
-      default=pathlib.Path(os.environ.get(
+      default=tfds.core.as_path(os.environ.get(
           'TFDS_DATA_DIR', os.path.join('~', 'tensorflow_datasets')
       )),
       help=
@@ -86,17 +87,17 @@ def register_subparser(parsers: argparse._SubParsersAction) -> None:  # pylint: 
   )
   path_group.add_argument(
       '--download_dir',
-      type=pathlib.Path,
+      type=tfds.core.as_path,
       help='Where to place downloads. Default to `<data_dir>/downloads/`.',
   )
   path_group.add_argument(
       '--extract_dir',
-      type=pathlib.Path,
+      type=tfds.core.as_path,
       help='Where to extract files. Default to `<download_dir>/extracted/`.',
   )
   path_group.add_argument(
       '--manual_dir',
-      type=pathlib.Path,
+      type=tfds.core.as_path,
       help=
       'Where to manually download data (required for some datasets). '
       'Default to `<download_dir>/manual/`.',
@@ -183,7 +184,10 @@ def _build_datasets(args: argparse.Namespace) -> None:
   if args.exclude_datasets:  # Generate all datasets if `--exclude_datasets` set
     if datasets:
       raise ValueError('--exclude_datasets can\'t be used with `datasets`')
-    datasets = set(tfds.list_builders()) - set(args.exclude_datasets.split(','))
+    datasets = (
+        set(tfds.list_builders(with_community_datasets=False))
+        - set(args.exclude_datasets.split(','))
+    )
     datasets = sorted(datasets)  # `set` is not deterministic
   else:
     datasets = datasets or ['']  # Empty string for default
@@ -250,6 +254,7 @@ def _get_builder_cls(
   # 1st case: Requested dataset is a path to `.py` script
   path = _search_script_path(ds_to_build)
   if path is not None:
+    logging.info(f'Loading dataset {ds_to_build} from path: {path}')
     # Dynamically load user dataset script
     with tfds.core.utils.add_sys_path(path.parent):
       builder_cls = tfds.core.community.builder_cls_from_module(path.stem)
@@ -258,14 +263,16 @@ def _get_builder_cls(
   # 2nd case: Dataset is registered through imports.
 
   # Extract `name/config:version`
-  extract_name_and_kwargs = tfds.core.load.dataset_name_and_kwargs_from_name_str
-  builder_name, builder_kwargs = extract_name_and_kwargs(ds_to_build)
-  builder_cls = tfds.builder_cls(builder_name)
+  name, builder_kwargs = tfds.core.naming.parse_builder_name_kwargs(ds_to_build)
+  builder_cls = tfds.builder_cls(str(name))
+  logging.info(
+      f'Loading dataset {ds_to_build} from imports: {builder_cls.__module__}'
+  )
   builder_kwargs = typing.cast(Dict[str, str], builder_kwargs)
   return builder_cls, builder_kwargs
 
 
-def _search_script_path(ds_to_build: str) -> Optional[pathlib.Path]:
+def _search_script_path(ds_to_build: str) -> Optional[tfds.core.ReadOnlyPath]:
   """Check whether the requested dataset match a file on disk."""
   # If the dataset file exists, use it. Valid values are:
   # * Empty string (use default directory)
@@ -276,9 +283,9 @@ def _search_script_path(ds_to_build: str) -> Optional[pathlib.Path]:
   # TODO(py3.7): Should be `path.expanduser().resolve()` but `.resolve()` fails
   # on some environments when the file doesn't exists.
   # https://stackoverflow.com/questions/55710900/pathlib-resolve-method-not-resolving-non-existant-files
-  path = pathlib.Path(ds_to_build).expanduser()
+  path = tfds.core.as_path(ds_to_build).expanduser()
   if not path.exists():
-    path = pathlib.Path().resolve() / path
+    path = tfds.core.as_path(pathlib.Path()).resolve() / path
   else:
     path = path.resolve()
 
@@ -296,7 +303,7 @@ def _search_script_path(ds_to_build: str) -> Optional[pathlib.Path]:
   elif (
       not ds_to_build
       or ds_to_build.endswith((os.sep, '.py'))  # ds.py
-      or pathlib.Path(ds_to_build).is_absolute()  # /path/to
+      or tfds.core.as_path(ds_to_build).is_absolute()  # /path/to
       or ds_to_build.count(os.sep) > 1  # path/dataset/config
   ):
     raise FileNotFoundError(
@@ -307,7 +314,9 @@ def _search_script_path(ds_to_build: str) -> Optional[pathlib.Path]:
     return None
 
 
-def _validate_script_path(path: pathlib.Path) -> Optional[pathlib.Path]:
+def _validate_script_path(
+    path: tfds.core.ReadOnlyPath,
+) -> Optional[tfds.core.ReadOnlyPath]:
   """Validates and returns the `dataset.py` generation script path."""
   if path.suffix != '.py':
     raise ValueError(f'Expected `.py` file. Invalid dataset path: {path}.')
@@ -350,7 +359,9 @@ def _download_and_prepare(
 
   # Dataset generated successfully
   logging.info('Dataset generation complete...')
-  termcolor.cprint(str(builder.info.as_proto), attrs=['bold'])
+  print()
+  print(repr(builder.info))
+  print()
 
 
 def _make_download_config(

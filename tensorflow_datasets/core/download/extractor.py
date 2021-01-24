@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,29 +15,25 @@
 
 """Module to use to extract archives. No business logic."""
 
+import bz2
 import concurrent.futures
 import contextlib
 import gzip
 import io
 import os
 import tarfile
+import typing
+from typing import Iterator, Tuple
 import uuid
 import zipfile
 
 from absl import logging
 import promise
-import six
 import tensorflow.compat.v2 as tf
 
 from tensorflow_datasets.core import constants
 from tensorflow_datasets.core import utils
 from tensorflow_datasets.core.download import resource as resource_lib
-
-if six.PY3:
-  import bz2  # pylint:disable=g-import-not-at-top
-else:
-  # py2's built-in bz2 package does not support reading from file objects.
-  import bz2file as bz2  # pylint:disable=g-import-not-at-top
 
 
 @utils.memoize()
@@ -164,12 +160,26 @@ def iter_tar(arch_f, stream=False):
         # Links cannot be dereferenced in stream mode.
         logging.warning('Skipping link during extraction: %s', member.name)
         continue
-      extract_file = tar.extractfile(member)
+
+      try:
+        extract_file = tar.extractfile(member)
+      except KeyError:
+        if not (member.islnk() or member.issym()):
+          raise  # Forward exception non-link files which couldn't be extracted
+        # The link could not be extracted, which likely indicates a corrupted
+        # archive.
+        logging.warning(
+            'Skipping extraction of invalid link: %s -> %s',
+            member.name,
+            member.linkname,
+        )
+        continue
+
       if extract_file:  # File with data (not directory):
         path = _normpath(member.path)  # pytype: disable=attribute-error
         if not path:
           continue
-        yield [path, extract_file]
+        yield (path, extract_file)
 
 
 def iter_tar_stream(arch_f):
@@ -199,7 +209,7 @@ def iter_zip(arch_f):
       path = _normpath(member.filename)
       if not path:
         continue
-      yield [path, extract_file]
+      yield (path, extract_file)
 
 
 _EXTRACT_METHODS = {
@@ -213,7 +223,10 @@ _EXTRACT_METHODS = {
 }
 
 
-def iter_archive(path, method):
+def iter_archive(
+    path: utils.PathLike,
+    method: resource_lib.ExtractMethod,
+) -> Iterator[Tuple[str, typing.BinaryIO]]:
   """Iterate over an archive.
 
   Args:
@@ -223,4 +236,8 @@ def iter_archive(path, method):
   Returns:
     An iterator of `(path_in_archive, f_obj)`
   """
-  return _EXTRACT_METHODS[method](path)
+  if method == resource_lib.ExtractMethod.NO_EXTRACT:
+    raise ValueError(
+        f'Cannot `iter_archive` over {path}. Invalid or unrecognised archive.'
+    )
+  return _EXTRACT_METHODS[method](path)  # pytype: disable=bad-return-type

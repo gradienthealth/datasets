@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +40,8 @@ from tensorflow_datasets.core.lazy_imports_lib import lazy_imports
 
 from tensorflow_datasets.core.read_only_builder import builder_from_directory
 
+from tensorflow_datasets.core.registered import DatasetNotFoundError
+
 from tensorflow_datasets.core.split_builder import SplitGeneratorLegacy as SplitGenerator
 
 from tensorflow_datasets.core.splits import Split
@@ -55,6 +57,7 @@ from tensorflow_datasets.core.utils import tfds_path
 from tensorflow_datasets.core.utils import Version
 from tensorflow_datasets.core.utils.benchmark import benchmark
 from tensorflow_datasets.core.utils.generic_path import as_path
+from tensorflow_datasets.core.utils.type_utils import PathLike
 from tensorflow_datasets.core.utils.type_utils import ReadOnlyPath
 from tensorflow_datasets.core.utils.type_utils import ReadWritePath
 
@@ -69,12 +72,14 @@ __all__ = [
     "builder_from_directory",
     "DatasetBuilder",
     "DatasetInfo",
+    "DatasetNotFoundError",
     "Experiment",
     "GeneratorBasedBuilder",
     "gcs_path",
     "lazy_imports",
     "Metadata",
     "MetadataDict",
+    "PathLike",
     "ReadInstruction",
     "ReadOnlyPath",
     "ReadWritePath",

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import json
 import os
 import tempfile
 import numpy as np
-import six
+
 import tensorflow.compat.v2 as tf
 from tensorflow_datasets import testing
 from tensorflow_datasets.core import dataset_info
@@ -111,6 +111,9 @@ class DatasetInfoTest(testing.TestCase):
 
     self.assertEqual("image", info.supervised_keys[0])
     self.assertEqual("label", info.supervised_keys[1])
+    self.assertEqual(
+        info.module_name, "tensorflow_datasets.testing.test_utils"
+    )
 
   def test_reading_empty_properties(self):
     info = dataset_info.DatasetInfo(builder=self._builder)
@@ -150,9 +153,9 @@ class DatasetInfoTest(testing.TestCase):
     # Assert correct license was written.
     self.assertEqual(existing_json["redistributionInfo"]["license"], license_)
 
-    if six.PY3:
-      # Only test on Python 3 to avoid u'' formatting issues
-      self.assertEqual(repr(info), INFO_STR)
+    # Do not check the full string as it display the generated path.
+    self.assertEqual(_INFO_STR % mnist_builder.data_dir, repr(info))
+    self.assertIn("'test': <SplitInfo num_examples=", repr(info))
 
   def test_restore_after_modification(self):
     # Create a DatasetInfo
@@ -162,7 +165,7 @@ class DatasetInfoTest(testing.TestCase):
         supervised_keys=("input", "output"),
         homepage="http://some-location",
         citation="some citation",
-        redistribution_info={"license": "some license"}
+        license="some license",
     )
     info.download_size = 456
     info.as_proto.splits.add(name="train", num_bytes=512)
@@ -256,8 +259,8 @@ class DatasetInfoTest(testing.TestCase):
       self.assertEqual(30, builder.info.splits.total_num_examples)
 
       # Per split.
-      test_split = builder.info.splits["test"].get_proto()
-      train_split = builder.info.splits["train"].get_proto()
+      test_split = builder.info.splits["test"].to_proto()
+      train_split = builder.info.splits["train"].to_proto()
       expected_schema = text_format.Parse("""
       feature {
         name: "x"
@@ -357,31 +360,37 @@ feature {
     self.assertEqual(2, len(info.as_proto.schema.feature))
 
 
-INFO_STR = """tfds.core.DatasetInfo(
+# pylint: disable=g-inconsistent-quotes
+_INFO_STR = '''tfds.core.DatasetInfo(
     name='mnist',
-    version=3.0.1,
-    description='The MNIST database of handwritten digits.',
+    full_name='mnist/3.0.1',
+    description="""
+    The MNIST database of handwritten digits.
+    """,
     homepage='https://storage.googleapis.com/cvdf-datasets/mnist/',
+    data_path='%s',
+    download_size=1.95 KiB,
+    dataset_size=11.06 MiB,
     features=FeaturesDict({
         'image': Image(shape=(28, 28, 1), dtype=tf.uint8),
         'label': ClassLabel(shape=(), dtype=tf.int64, num_classes=10),
     }),
-    total_num_examples=40,
-    splits={
-        'test': 20,
-        'train': 20,
-    },
     supervised_keys=('image', 'label'),
-    citation=\"\"\"@article{lecun2010mnist,
+    splits={
+        'test': <SplitInfo num_examples=20, num_shards=1>,
+        'train': <SplitInfo num_examples=20, num_shards=1>,
+    },
+    citation="""@article{lecun2010mnist,
       title={MNIST handwritten digit database},
       author={LeCun, Yann and Cortes, Corinna and Burges, CJ},
       journal={ATT Labs [Online]. Available: http://yann. lecun. com/exdb/mnist},
       volume={2},
       year={2010}
-    }\"\"\",
+    }
+    """,
     redistribution_info=license: "test license",
-)
-"""
+)'''
+# pylint: enable=g-inconsistent-quotes
 
 
 if __name__ == "__main__":

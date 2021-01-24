@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,17 @@
 
 """Base DatasetBuilderTestCase to test a DatasetBuilder base class."""
 
+import collections
+import contextlib
 import difflib
 import hashlib
 import itertools
 import numbers
 import os
 import textwrap
+from typing import Iterator
+from unittest import mock
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v2 as tf
@@ -33,6 +36,7 @@ from tensorflow_datasets.core import dataset_utils
 from tensorflow_datasets.core import download
 from tensorflow_datasets.core import load
 from tensorflow_datasets.core import utils
+from tensorflow_datasets.core import visibility
 from tensorflow_datasets.core.download import checksums
 from tensorflow_datasets.testing import feature_test_case
 from tensorflow_datasets.testing import test_utils
@@ -106,8 +110,7 @@ class DatasetBuilderTestCase(
       If not specified: will use DL_EXTRACT_RESULT (this is due to backwards
       compatibility and will be removed in the future).
     * EXAMPLE_DIR: `str`, the base directory in in which fake examples are
-      contained. Optional; defaults to
-      tensorflow_datasets/testing/test_data/fake_examples/<dataset name>.
+      contained. Optional; defaults to `<dataset dir>/dummy_data/`.
     * OVERLAPPING_SPLITS: `list[str]`, splits containing examples from other
       splits (e.g. a "example" split containing pictures from other splits).
     * MOCK_OUT_FORBIDDEN_OS_FUNCTIONS: `bool`, defaults to True. Set to False to
@@ -144,38 +147,28 @@ class DatasetBuilderTestCase(
   @classmethod
   def setUpClass(cls):
     tf.enable_v2_behavior()
-    super(DatasetBuilderTestCase, cls).setUpClass()
+    super().setUpClass()
     name = cls.__name__
     # Check class has the right attributes
     if cls.DATASET_CLASS is None or not callable(cls.DATASET_CLASS):
       raise AssertionError(
           "Assign your DatasetBuilder class to %s.DATASET_CLASS." % name)
 
+    cls._available_cm = visibility.set_availables_tmp([
+        visibility.DatasetType.TFDS_PUBLIC,
+    ])
+    cls._available_cm.__enter__()
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    cls._available_cm.__exit__(None, None, None)
+
   def setUp(self):
     super(DatasetBuilderTestCase, self).setUp()
     self.patchers = []
     self.builder = self._make_builder()
 
-    example_dir = self.DATASET_CLASS.code_path.parent / "dummy_data"
-    fake_example_dir = utils.as_path(test_utils.fake_examples_dir())
-    if self.EXAMPLE_DIR is not None:
-      self.example_dir = utils.as_path(self.EXAMPLE_DIR)
-    elif example_dir.exists():
-      self.example_dir = example_dir
-    else:
-      self.example_dir = fake_example_dir / self.builder.name
-
-    if not self.example_dir.exists():
-      err_msg = (
-          "Dummy data not found in {}."
-          ""
-      ).format(self.example_dir)
-
-    if not self.example_dir.exists():
-      # TODO(epot): Better documentation once datasets are migrated to the
-      # folder model.
-      err_msg = "fake_examples dir %s not found." % self.example_dir
-      raise ValueError(err_msg)
     if self.MOCK_OUT_FORBIDDEN_OS_FUNCTIONS:
       self._mock_out_forbidden_os_functions()
 
@@ -193,34 +186,57 @@ class DatasetBuilderTestCase(
     for patcher in self.patchers:
       patcher.stop()
 
+  @utils.classproperty
+  @classmethod
+  @utils.memoize()
+  def dummy_data(cls) -> utils.ReadOnlyPath:  # pylint: disable=no-self-argument
+    """Path to the `dummy_data/` directory."""
+    if cls.DATASET_CLASS is None:  # Required for build_api_docs
+      return None  # pytype: disable=bad-return-type
+
+    dummy_data_expected = cls.DATASET_CLASS.code_path.parent / "dummy_data"
+    fake_example_dir = utils.as_path(test_utils.fake_examples_dir())
+    if cls.EXAMPLE_DIR is not None:
+      dummy_data_found = utils.as_path(cls.EXAMPLE_DIR)
+      dummy_data_expected = dummy_data_found  # Dir to display in the error
+    elif dummy_data_expected.exists():
+      dummy_data_found = dummy_data_expected
+    else:
+      dummy_data_found = fake_example_dir / cls.DATASET_CLASS.name
+
+    if not dummy_data_found.exists():
+      err_msg = f"Dummy data not found in: {dummy_data_expected}"
+      raise ValueError(err_msg)
+    return dummy_data_found
+
   def _mock_out_forbidden_os_functions(self):
     """Raises error if forbidden os functions are called instead of gfile."""
     err = AssertionError("Do not use `os`, but `tf.io.gfile` module instead. "
                          "This makes code compatible with more filesystems.")
     sep = os.path.sep
-    mock_os_path = absltest.mock.Mock(os.path, wraps=os.path)
+    mock_os_path = mock.Mock(os.path, wraps=os.path)
     mock_os_path.sep = sep
     for fop in FORBIDDEN_OS_PATH_FUNCTIONS:
       getattr(mock_os_path, fop).side_effect = err
-    mock_os = absltest.mock.Mock(os, path=mock_os_path, fspath=os.fspath)
+    mock_os = mock.Mock(os, path=mock_os_path, fspath=os.fspath)
     for fop in FORBIDDEN_OS_FUNCTIONS:
       if os.name == "nt" and not hasattr(os, fop):
         continue  # Not all `os` functions are available on Windows (ex: chmod).
       getattr(mock_os, fop).side_effect = err
-    os_patcher = absltest.mock.patch(
+    os_patcher = mock.patch(
         self.DATASET_CLASS.__module__ + ".os", mock_os, create=True)
     os_patcher.start()
     self.patchers.append(os_patcher)
 
     mock_builtins = __builtins__.copy()  # pytype: disable=module-attr
-    mock_builtins["open"] = absltest.mock.Mock(side_effect=err)
-    open_patcher = absltest.mock.patch(
+    mock_builtins["open"] = mock.Mock(side_effect=err)
+    open_patcher = mock.patch(
         self.DATASET_CLASS.__module__ + ".__builtins__", mock_builtins)
     open_patcher.start()
     self.patchers.append(open_patcher)
 
     # It's hard to mock open within numpy, so mock np.load.
-    np_load_patcher = absltest.mock.patch("numpy.load", _np_load)
+    np_load_patcher = mock.patch("numpy.load", _np_load)
     np_load_patcher.start()
     self.patchers.append(np_load_patcher)
 
@@ -232,11 +248,9 @@ class DatasetBuilderTestCase(
     # all needed methods were implemented.
 
   def test_registered(self):
-    is_registered = self.builder.name in load.list_builders()
-    self.assertTrue(
-        is_registered,
-        f"Dataset {self.builder.name} was not registered.",
-    )
+    self.assertIn(self.builder.name, load.list_builders(
+        with_community_datasets=False,
+    ))
 
   def test_info(self):
     info = self.builder.info
@@ -257,9 +271,9 @@ class DatasetBuilderTestCase(
     tf.nest.map_structure(self._add_url, url)
     del url
     if self.DL_EXTRACT_RESULT is None:
-      return self.example_dir
+      return self.dummy_data
     return tf.nest.map_structure(
-        lambda fname: self.example_dir / fname,
+        lambda fname: self.dummy_data / fname,
         self.DL_EXTRACT_RESULT,
     )
 
@@ -267,10 +281,10 @@ class DatasetBuilderTestCase(
     tf.nest.map_structure(self._add_url, url)
     if self.DL_DOWNLOAD_RESULT is None:
       # This is only to be backwards compatible with old approach.
-      # In the future it will be replaced with using self.example_dir.
+      # In the future it will be replaced with using self.dummy_data.
       return self._get_dl_extract_result(url)
     return tf.nest.map_structure(
-        lambda fname: self.example_dir / fname,
+        lambda fname: self.dummy_data / fname,
         self.DL_DOWNLOAD_RESULT,
     )
 
@@ -349,19 +363,19 @@ class DatasetBuilderTestCase(
     # Provide the manual dir only if builder has MANUAL_DOWNLOAD_INSTRUCTIONS
     # set.
 
-    missing_dir_mock = absltest.mock.PropertyMock(
+    missing_dir_mock = mock.PropertyMock(
         side_effect=Exception("Missing MANUAL_DOWNLOAD_INSTRUCTIONS"))
 
     manual_dir = (
-        self.example_dir
+        self.dummy_data
         if builder.MANUAL_DOWNLOAD_INSTRUCTIONS else missing_dir_mock)
-    with absltest.mock.patch.multiple(
+    with mock.patch.multiple(
         "tensorflow_datasets.core.download.DownloadManager",
         download_and_extract=self._get_dl_extract_result,
         download=self._get_dl_download_result,
         download_checksums=self._download_checksums,
         manual_dir=manual_dir,
-        download_dir=self.example_dir,
+        download_dir=self.dummy_data,
     ):
       # For Beam datasets, set-up the runner config
       beam_runner = None
@@ -370,7 +384,8 @@ class DatasetBuilderTestCase(
           compute_stats=download.ComputeStatsMode.SKIP,
           beam_runner=beam_runner,
       )
-      builder.download_and_prepare(download_config=download_config)
+      with self._test_key_not_local_path(builder):
+        builder.download_and_prepare(download_config=download_config)
 
     with self._subTest("as_dataset"):
       self._assertAsDataset(builder)
@@ -390,6 +405,47 @@ class DatasetBuilderTestCase(
 
     with self._subTest("config_description"):
       self._test_description_builder_config(builder)
+
+  @contextlib.contextmanager
+  def _test_key_not_local_path(self, builder) -> Iterator[None]:
+    if not isinstance(builder, dataset_builder.GeneratorBasedBuilder):
+      yield  # Do not test non-generator builder
+      return
+
+    original_generate_examples = builder._generate_examples  # pylint: disable=protected-access
+
+    def _iter_examples(generator):
+      for key, ex in generator:
+        self._assert_key_valid(key)
+        yield key, ex
+
+    def new_generate_examples(*args, **kwargs):
+      examples = original_generate_examples(*args, **kwargs)
+      try:
+        import apache_beam as beam  # pylint: disable=g-import-not-at-top
+      except ImportError:
+        beam = None
+      if beam and isinstance(examples, (beam.PCollection, beam.PTransform)):
+        return examples  # Beam keys not supported for now
+      elif isinstance(examples, collections.abc.Iterable):
+        return _iter_examples(examples)
+      else:  # Unexpected
+        return examples
+
+    with mock.patch.object(
+        builder, "_generate_examples", new_generate_examples
+    ):
+      yield
+
+  def _assert_key_valid(self, key):
+    if isinstance(key, str) and os.fspath(self.dummy_data) in key:
+      err_msg = (
+          "Key yield in '_generate_examples' method "
+          f"contain user directory path: {key}.\n"
+          "This makes the dataset example order non-deterministic. "
+          "Please use `filepath.name`, or `os.path.basename` instead."
+      )
+      raise ValueError(err_msg)
 
   def _assertAsDataset(self, builder):
     split_to_checksums = {}  # {"split": set(examples_checksums)}
@@ -474,7 +530,7 @@ def checksum(example):
     elif isinstance(element,
                     (tf.RaggedTensor, tf.compat.v1.ragged.RaggedTensorValue)):
       flat_str.append(str(element.to_list()))
-    elif isinstance(element, np.ndarray):
+    elif isinstance(element, (np.ndarray, np.generic)):
       # tf.Tensor() returns np.array of dtype object, which don't work
       # with x.to_bytes(). So instead convert numpy into list.
       if element.dtype.type is np.object_:

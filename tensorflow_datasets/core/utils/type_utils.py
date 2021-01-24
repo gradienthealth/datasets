@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -195,6 +195,10 @@ class ReadWritePath(ReadOnlyPath, Protocol):
   def rmtree(self) -> None:
     """Remove the directory, including all sub-files."""
 
+  @abc.abstractmethod
+  def unlink(self, missing_ok: bool = False) -> None:
+    """Remove this file or symbolic link."""
+
   def write_bytes(self, data: bytes) -> None:
     """Writes content as bytes."""
     with self.open('wb') as f:
@@ -213,8 +217,11 @@ class ReadWritePath(ReadOnlyPath, Protocol):
   def touch(self, mode: int = 0o666, exist_ok: bool = True) -> None:
     """Create a file at this given path."""
     del mode  # Unused
-    if self.exists() and not exist_ok:
-      raise FileExistsError(f'{self} already exists.')
+    if self.exists():
+      if exist_ok:
+        return
+      else:
+        raise FileExistsError(f'{self} already exists.')
     self.write_text('')
 
   @abc.abstractmethod
@@ -224,3 +231,7 @@ class ReadWritePath(ReadOnlyPath, Protocol):
   @abc.abstractmethod
   def replace(self: T, target: PathLike) -> T:
     """Overwrites the destination path."""
+
+  @abc.abstractmethod
+  def copy(self: T, dst: PathLike, overwrite: bool = False) -> T:
+    """Copy the current file to the given destination."""

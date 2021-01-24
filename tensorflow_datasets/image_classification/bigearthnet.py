@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors.
+# Copyright 2021 The TensorFlow Datasets Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ _LABELS = [
 
 _DATA_OPTIONS = ['rgb', 'all']
 
-_ZIP_FILE = 'http://bigearth.net/downloads/BigEarthNet-v1.0.tar.gz'
+_ZIP_FILE = 'http://bigearth.net/downloads/BigEarthNet-S2-v1.0.tar.gz'
 _ZIP_SUBIDR = 'BigEarthNet-v1.0'
 
 # To clip and rescale the RGB channels for the JPEG images visualizatoin.
