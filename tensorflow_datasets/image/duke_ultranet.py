@@ -101,9 +101,9 @@ _CHANNELS = 180
 class DukeUltranet(tfds.core.BeamBasedBuilder):
     """TODO(duke_ultranet): Short description of my dataset."""
 
-    VERSION = tfds.core.Version('0.2.3', 'adds downsampled baseband IQ, adds test set')
+    VERSION = tfds.core.Version('0.2.3') # adds downsampled baseband IQ, adds test set
     SUPPORTED_VERSIONS = [
-          tfds.core.Version('0.2.2', 'dynamic_rx and bmode are cached')
+          tfds.core.Version('0.2.2') # dynamic_rx and bmode are cached'
       ]
     BUILDER_CONFIGS = [
         tfds.core.BuilderConfig(
