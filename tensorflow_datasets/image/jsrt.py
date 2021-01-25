@@ -27,23 +27,26 @@ _CITATION = """
 
 _DESCRIPTION = """JSRT is a high resoultion (2048x2048, 0.175mm pixel) chest 
 x-ray imaging dataset with 4096 gray scale (12bit). It contains 154 images with
-a nodule, and 93 non-nodule images."""
+a nodule, and 93 non-nodule images. Requires access to wasabi s3://gradient-raw-data"""
 
 _DIFFICULTY = ['Extremely Subtle', 'Very Subtle', 'Subtle', 'Relatively Obvious', 'Obvious']
 
 class Jsrt(tfds.core.GeneratorBasedBuilder):
-    VERSION = tfds.core.Version('0.1.0')
+    VERSION = tfds.core.Version('0.2.0')
+    RELEASE_NOTES = {
+        '0.2.0': 'Initial release.',
+    }
     MANUAL_DOWNLOAD_INSTRUCTIONS = """\
-        manual_dir should contain unzipped All247Images.zip and Clinical_Information.zip from the JSRT Database
+        manual_dir should contain unzipped All247Images.zip and Clinical_Information.zip from the JSRT Database. Use the wasabi s3://gradient-raw-data/JSRT folder
     """
-
+    
     @staticmethod
     def hist_match(source, template):
         oldshape = source.shape
         source = source.ravel()
         template = template.ravel()
-        s_values, bin_idx, s_counts = np.unique(source, return_inverse=True,
-                                                                                        return_counts=True)
+        s_values, bin_idx, s_counts = np.unique(source, return_inverse=True, 
+                                                return_counts=True)
         t_values, t_counts = np.unique(template, return_counts=True)
         s_quantiles = np.cumsum(s_counts).astype(np.float64)
         s_quantiles /= s_quantiles[-1]
@@ -59,6 +62,8 @@ class Jsrt(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict({
                 'image': tfds.features.Image(shape=(2048, 2048, 1), encoding_format='png', dtype=tf.uint16),
                 'bse': tfds.features.Image(shape=(2048, 2048, 1), encoding_format='png', dtype=tf.uint16),
+                'mask': tfds.features.Tensor(shape=(2048, 2048, 1), dtype=tf.bool),
+                'filename': tfds.features.Tensor(shape=(), dtype=tf.string),
                 'age': tfds.features.Tensor(shape=(), dtype=tf.int8),
                 'sex': tfds.features.ClassLabel(names=['male', 'female', 'other']),
                 'nodule': tfds.features.ClassLabel(names=['non-nodule', 'nodule']),
@@ -77,10 +82,12 @@ class Jsrt(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager):
         """Returns SplitGenerators."""
-        lung_nodule_list = os.path.join(dl_manager.manual_dir, 'CLNDAT_EN.txt')
-        no_nodule_list = os.path.join(dl_manager.manual_dir, 'CNNDAT_EN.txt')
-        jsrt_directory = os.path.join(dl_manager.manual_dir, 'JSRT')
-        bse_directory = os.path.join(dl_manager.manual_dir, 'BSE')
+        manual_dir = "s3://gradient-raw-data/JSRT"
+        lung_nodule_list = os.path.join(manual_dir, 'CLNDAT_EN.txt')
+        no_nodule_list = os.path.join(manual_dir, 'CNNDAT_EN.TXT')
+        jsrt_directory = os.path.join(manual_dir, 'jsrt')
+        bse_directory = os.path.join(manual_dir, 'bse')
+        masks_directory = os.path.join(manual_dir, 'masks')
         if not (tf.io.gfile.exists(lung_nodule_list) or 
                         tf.io.gfile.exists(no_nodule_list) or
                         tf.io.gfile.exists(jsrt_directory) or
@@ -108,26 +115,44 @@ class Jsrt(tfds.core.GeneratorBasedBuilder):
                         "lung_nodule_list": ln,
                         "no_nodule_list": nn,
                         "jsrt_directory": jsrt_directory,
-                        "bse_directory": bse_directory
+                        "bse_directory": bse_directory,
+                        "masks_directory": masks_directory
                     }
             )
         ]
 
-    def _generate_examples(self, lung_nodule_list=None, no_nodule_list=None, jsrt_directory=None, bse_directory=None):
+    def _generate_examples(self, lung_nodule_list=None, no_nodule_list=None, jsrt_directory=None, bse_directory=None, masks_directory=None):
         """Yields examples."""
+        def normalize(x):
+            x = tf.cast(x, tf.float32)
+            x = (x - tf.reduce_min(x)) / (tf.reduce_max(x) - tf.reduce_min(x))
+            x = x*65535
+            x = tf.math.round(x)
+            x = tf.clip_by_value(x, 0, 65535)
+            x = tf.cast(x, tf.uint16)
+            return x
+        
         def get_images(filename):
             image = tf.io.decode_raw(tf.io.read_file('{}/{}.IMG'.format(jsrt_directory, filename)), tf.uint16, little_endian=False)
             image = tf.reshape(image, (2048, 2048, 1))
+            image = image*16 # max value of 4095 -> 65520
+            
             bse = tf.io.decode_png(tf.io.read_file('{}/{}.png'.format(bse_directory, filename)), channels=1, dtype=tf.uint16)
             bse = self.hist_match(bse.numpy(), image.numpy()).astype(np.uint16)
-            return image.numpy(), bse
+            
+            mask = tf.io.decode_png(tf.io.read_file('{}/{}.png'.format(masks_directory, filename)), channels=1, dtype=tf.uint8)
+            mask = mask > 0
+
+            return image.numpy(), bse, mask.numpy()
 
         for line in no_nodule_list:
             filename = line[0][:-4]
-            image, bse = get_images(filename)
+            image, bse, mask = get_images(filename)
             yield filename, {
                 'image': image,
                 'bse': bse,
+                'mask': mask,
+                'filename': filename,
                 'age': int(line[1]),
                 'sex': line[2],
                 'nodule': 'non-nodule',
@@ -143,7 +168,7 @@ class Jsrt(tfds.core.GeneratorBasedBuilder):
 
         for line in lung_nodule_list:
             filename = line[0][:-4]
-            image, bse = get_images(filename)
+            image, bse, mask = get_images(filename)
             try:
                 age = int(line[3])
             except Exception:
@@ -152,6 +177,8 @@ class Jsrt(tfds.core.GeneratorBasedBuilder):
             yield filename, {
                 'image': image,
                 'bse': bse,
+                'mask': mask,
+                'filename': filename,
                 'age': age,
                 'sex': line[4],
                 'nodule': 'nodule',
